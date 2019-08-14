@@ -61,6 +61,9 @@ cc_library {
     vndk: {
         enabled: true,
     },
+    lto: {
+        thin: true,
+    },
     srcs: [
         "android_keymaster/android_keymaster.cpp",
         "android_keymaster/android_keymaster_messages.cpp",
