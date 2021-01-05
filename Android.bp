@@ -125,8 +125,9 @@ cc_library {
         "libcrypto",
         "libcppbor_external",
     ],
-    header_libs: ["libhardware_headers", "libcppbor_external"],
-    export_header_lib_headers: ["libhardware_headers", "libcppbor_external"],
+    export_shared_lib_headers: ["libcppbor_external"],
+    header_libs: ["libhardware_headers"],
+    export_header_lib_headers: ["libhardware_headers"],
     defaults: ["keymaster_defaults" ],
     cflags: [
         "-DBORINGSSL_NO_CXX",
@@ -149,12 +150,9 @@ cc_library {
     name: "libsoftkeymasterdevice",
     srcs: [
         "android_keymaster/keymaster_configuration.cpp",
-        "legacy_support/ec_keymaster0_key.cpp",
         "legacy_support/ec_keymaster1_key.cpp",
         "legacy_support/ecdsa_keymaster1_operation.cpp",
-        "legacy_support/keymaster0_engine.cpp",
         "legacy_support/keymaster1_engine.cpp",
-        "legacy_support/rsa_keymaster0_key.cpp",
         "legacy_support/rsa_keymaster1_key.cpp",
         "legacy_support/rsa_keymaster1_operation.cpp",
         "legacy_support/keymaster1_legacy_support.cpp",
@@ -248,13 +246,10 @@ cc_library_shared {
         "contexts/keymaster2_passthrough_context.cpp",
         "ng/AndroidKeymaster3Device.cpp",
         "android_keymaster/keymaster_configuration.cpp",
-        "legacy_support/ec_keymaster0_key.cpp",
         "legacy_support/ec_keymaster1_key.cpp",
         "legacy_support/ecdsa_keymaster1_operation.cpp",
-        "legacy_support/keymaster0_engine.cpp",
         "legacy_support/keymaster1_engine.cpp",
         "legacy_support/keymaster1_legacy_support.cpp",
-        "legacy_support/rsa_keymaster0_key.cpp",
         "legacy_support/rsa_keymaster1_key.cpp",
         "legacy_support/rsa_keymaster1_operation.cpp",
     ],
@@ -330,38 +325,36 @@ cc_library_shared {
     export_include_dirs: ["ng/include"],
 }
 
-
-cc_library_shared {
-    name: "libkeymint1",
+cc_library {
+    name: "libkeymint",
     vendor_available: true,
     srcs: [
-        "legacy_support/keymaster_passthrough_key.cpp",
-        "legacy_support/keymaster_passthrough_engine.cpp",
-        "legacy_support/keymaster_passthrough_operation.cpp",
-        "ng/KeyMintAidlUtils.cpp",
-        "ng/AndroidKeyMint1Device.cpp",
-        "ng/AndroidKeyMint1Operation.cpp",
         "android_keymaster/keymaster_configuration.cpp",
+        "legacy_support/keymaster_passthrough_engine.cpp",
+        "legacy_support/keymaster_passthrough_key.cpp",
+        "legacy_support/keymaster_passthrough_operation.cpp",
+        "ng/AndroidKeyMintDevice.cpp",
+        "ng/AndroidKeyMintOperation.cpp",
+        "ng/KeyMintUtils.cpp",
     ],
     defaults: ["keymaster_defaults"],
     shared_libs: [
-        "libkeymaster_messages",
-        "android.hardware.keymint-ndk_platform",
+	"libhidlbase",
+        "android.hardware.security.keymint-unstable-ndk_platform",
         "libbase",
-        "libcrypto",
-        "libcutils",
         "libbinder_ndk",
         "libcppbor",
-	"libhidlbase",
-        "libkeymaster_portable",
+        "libcrypto",
+        "libcutils",
         "libkeymaster_messages",
-        "libpuresoftkeymasterdevice",
+        "libkeymaster_messages",
+        "libkeymaster_portable",
         "liblog",
+        "libpuresoftkeymasterdevice",
         "libutils",
     ],
     export_include_dirs: ["include", "ng/include"],
 }
-
 
 // libkeymasterfiles is an empty library that exports all of the files in keymaster as includes.
 cc_library_static {

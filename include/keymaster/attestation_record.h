@@ -14,8 +14,7 @@
  * limitations under the License.
  */
 
-#ifndef SYSTEM_KEYMASTER_ATTESTATION_RECORD_H_
-#define SYSTEM_KEYMASTER_ATTESTATION_RECORD_H_
+#pragma once
 
 #include <hardware/keymaster_defs.h>
 
@@ -303,7 +302,7 @@ static const char kEatSubmodNameSoftware[] = "software";
 static const char kEatSubmodNameTee[] = "tee";
 
 constexpr size_t kImeiBlobLength = 15;
-constexpr size_t kUeidLength = 7;
+constexpr size_t kUeidLength = 15;
 constexpr uint8_t kImeiTypeByte = 0x03;
 
 class AttestationRecordContext {
@@ -351,11 +350,9 @@ class AttestationRecordContext {
      * implementations, these will be the values reported by the bootloader. By default,  verified
      * boot state is unknown, and KM_ERROR_UNIMPLEMENTED is returned.
      */
-    virtual keymaster_error_t
-    GetVerifiedBootParams(keymaster_blob_t* /* verified_boot_key */,
-                          keymaster_blob_t* /* verified_boot_hash */,
-                          keymaster_verified_boot_t* /* verified_boot_state */,
-                          bool* /* device_locked */) const {
+    virtual keymaster_error_t GetVerifiedBootParams(
+        keymaster_blob_t* /* verified_boot_key */, keymaster_blob_t* /* verified_boot_hash */,
+        keymaster_verified_boot_t* /* verified_boot_state */, bool* /* device_locked */) const {
         return KM_ERROR_UNIMPLEMENTED;
     }
 
@@ -444,7 +441,22 @@ keymaster_error_t extract_auth_list(const KM_AUTH_LIST* record, AuthorizationSet
  * Convert a KeymasterContext::Version to the keymaster version number used in attestations.
  */
 inline static uint version_to_attestation_km_version(KmVersion version) {
-    return static_cast<uint>(version);
+    switch (version) {
+    default:
+    case KmVersion::KEYMASTER_1:
+    case KmVersion::KEYMASTER_1_1:
+        return 0;  // Attestation not actually supported.
+    case KmVersion::KEYMASTER_2:
+        return 2;
+    case KmVersion::KEYMASTER_3:
+        return 3;
+    case KmVersion::KEYMASTER_4:
+        return 4;
+    case KmVersion::KEYMASTER_4_1:
+        return 41;
+    case KmVersion::KEYMINT_1:
+        return 100;
+    }
 }
 
 /**
@@ -469,5 +481,3 @@ inline static uint version_to_attestation_version(KmVersion version) {
 }
 
 }  // namespace keymaster
-
-#endif  // SYSTEM_KEYMASTER_ATTESTATION_RECORD_H_

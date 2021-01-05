@@ -14,19 +14,17 @@
  * limitations under the License.
  */
 
-#ifndef SYSTEM_KEYMASTER_PURE_SOFT_KEYMASTER_CONTEXT_H_
-#define SYSTEM_KEYMASTER_PURE_SOFT_KEYMASTER_CONTEXT_H_
-
+#pragma once
 
 #include <memory>
 #include <string>
 
-#include <keymaster/keymaster_context.h>
 #include <keymaster/attestation_record.h>
-#include <keymaster/km_openssl/software_random_source.h>
+#include <keymaster/keymaster_context.h>
 #include <keymaster/km_openssl/soft_keymaster_enforcement.h>
-#include <keymaster/soft_key_factory.h>
+#include <keymaster/km_openssl/software_random_source.h>
 #include <keymaster/random_source.h>
+#include <keymaster/soft_key_factory.h>
 
 namespace keymaster {
 
@@ -70,10 +68,8 @@ class PureSoftKeymasterContext : public KeymasterContext,
     keymaster_error_t DeleteAllKeys() const override;
     keymaster_error_t AddRngEntropy(const uint8_t* buf, size_t length) const override;
 
-    keymaster_error_t GenerateAttestation(const Key& key,
-                                          const AuthorizationSet& attest_params,
-                                          CertChainPtr* cert_chain) const override;
-
+    CertificateChain GenerateAttestation(const Key& key, const AuthorizationSet& attest_params,
+                                         keymaster_error_t* error) const override;
 
     KeymasterEnforcement* enforcement_policy() override {
         // SoftKeymaster does no enforcement; it's all done by Keystore.
@@ -118,5 +114,3 @@ class PureSoftKeymasterContext : public KeymasterContext,
 };
 
 }  // namespace keymaster
-
-#endif  // SYSTEM_KEYMASTER_PURE_SOFT_KEYMASTER_CONTEXT_H_
