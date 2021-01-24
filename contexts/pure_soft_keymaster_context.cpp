@@ -61,13 +61,14 @@ PureSoftKeymasterContext::PureSoftKeymasterContext(KmVersion version,
 PureSoftKeymasterContext::~PureSoftKeymasterContext() {}
 
 keymaster_error_t PureSoftKeymasterContext::SetSystemVersion(uint32_t os_version,
-                                                         uint32_t os_patchlevel) {
+                                                             uint32_t os_patchlevel) {
     os_version_ = os_version;
     os_patchlevel_ = os_patchlevel;
     return KM_ERROR_OK;
 }
 
-void PureSoftKeymasterContext::GetSystemVersion(uint32_t* os_version, uint32_t* os_patchlevel) const {
+void PureSoftKeymasterContext::GetSystemVersion(uint32_t* os_version,
+                                                uint32_t* os_patchlevel) const {
     *os_version = os_version_;
     *os_patchlevel = os_patchlevel_;
 }
@@ -99,10 +100,9 @@ PureSoftKeymasterContext::GetSupportedAlgorithms(size_t* algorithms_count) const
 }
 
 OperationFactory* PureSoftKeymasterContext::GetOperationFactory(keymaster_algorithm_t algorithm,
-                                                            keymaster_purpose_t purpose) const {
+                                                                keymaster_purpose_t purpose) const {
     KeyFactory* key_factory = GetKeyFactory(algorithm);
-    if (!key_factory)
-        return nullptr;
+    if (!key_factory) return nullptr;
     return key_factory->GetOperationFactory(purpose);
 }
 
@@ -164,12 +164,11 @@ keymaster_error_t PureSoftKeymasterContext::CreateKeyBlob(const AuthorizationSet
 }
 
 keymaster_error_t PureSoftKeymasterContext::UpgradeKeyBlob(const KeymasterKeyBlob& key_to_upgrade,
-                                                       const AuthorizationSet& upgrade_params,
-                                                       KeymasterKeyBlob* upgraded_key) const {
+                                                           const AuthorizationSet& upgrade_params,
+                                                           KeymasterKeyBlob* upgraded_key) const {
     UniquePtr<Key> key;
     keymaster_error_t error = ParseKeyBlob(key_to_upgrade, upgrade_params, &key);
-    if (error != KM_ERROR_OK)
-        return error;
+    if (error != KM_ERROR_OK) return error;
 
     return UpgradeSoftKeyBlob(key, os_version_, os_patchlevel_, upgrade_params, upgraded_key);
 }
@@ -204,7 +203,7 @@ keymaster_error_t PureSoftKeymasterContext::ParseKeyBlob(const KeymasterKeyBlob&
     KeymasterKeyBlob key_material;
     keymaster_error_t error;
 
-    auto constructKey = [&, this] () mutable -> keymaster_error_t {
+    auto constructKey = [&, this]() mutable -> keymaster_error_t {
         // GetKeyFactory
         if (error != KM_ERROR_OK) return error;
         keymaster_algorithm_t algorithm;
@@ -219,26 +218,22 @@ keymaster_error_t PureSoftKeymasterContext::ParseKeyBlob(const KeymasterKeyBlob&
 
     AuthorizationSet hidden;
     error = BuildHiddenAuthorizations(additional_params, &hidden, softwareRootOfTrust);
-    if (error != KM_ERROR_OK)
-        return error;
+    if (error != KM_ERROR_OK) return error;
 
     // Assume it's an integrity-assured blob (new software-only blob, or new keymaster0-backed
     // blob).
-    error = DeserializeIntegrityAssuredBlob(blob, hidden, &key_material, &hw_enforced, &sw_enforced);
-    if (error != KM_ERROR_INVALID_KEY_BLOB)
-        return constructKey();
+    error =
+        DeserializeIntegrityAssuredBlob(blob, hidden, &key_material, &hw_enforced, &sw_enforced);
+    if (error != KM_ERROR_INVALID_KEY_BLOB) return constructKey();
 
     // Wasn't an integrity-assured blob.  Maybe it's an OCB-encrypted blob.
     error = ParseOcbAuthEncryptedBlob(blob, hidden, &key_material, &hw_enforced, &sw_enforced);
-    if (error == KM_ERROR_OK)
-        LOG_D("Parsed an old keymaster1 software key", 0);
-    if (error != KM_ERROR_INVALID_KEY_BLOB)
-        return constructKey();
+    if (error == KM_ERROR_OK) LOG_D("Parsed an old keymaster1 software key", 0);
+    if (error != KM_ERROR_INVALID_KEY_BLOB) return constructKey();
 
     // Wasn't an OCB-encrypted blob.  Maybe it's an old softkeymaster blob.
     error = ParseOldSoftkeymasterBlob(blob, &key_material, &hw_enforced, &sw_enforced);
-    if (error == KM_ERROR_OK)
-        LOG_D("Parsed an old sofkeymaster key", 0);
+    if (error == KM_ERROR_OK) LOG_D("Parsed an old sofkeymaster key", 0);
 
     return constructKey();
 }
@@ -259,31 +254,32 @@ keymaster_error_t PureSoftKeymasterContext::AddRngEntropy(const uint8_t* buf, si
     return KM_ERROR_OK;
 }
 
-keymaster_error_t PureSoftKeymasterContext::GenerateAttestation(const Key& key,
-                                      const AuthorizationSet& attest_params,
-                                      CertChainPtr* cert_chain) const {
-
-    keymaster_error_t error = KM_ERROR_OK;
+CertificateChain
+PureSoftKeymasterContext::GenerateAttestation(const Key& key, const AuthorizationSet& attest_params,
+                                              keymaster_error_t* error) const {
     keymaster_algorithm_t key_algorithm;
     if (!key.authorizations().GetTagValue(TAG_ALGORITHM, &key_algorithm)) {
-        return KM_ERROR_UNKNOWN_ERROR;
+        *error = KM_ERROR_UNKNOWN_ERROR;
+        return {};
     }
 
-    if ((key_algorithm != KM_ALGORITHM_RSA && key_algorithm != KM_ALGORITHM_EC))
-        return KM_ERROR_INCOMPATIBLE_ALGORITHM;
+    if ((key_algorithm != KM_ALGORITHM_RSA && key_algorithm != KM_ALGORITHM_EC)) {
+        *error = KM_ERROR_INCOMPATIBLE_ALGORITHM;
+        return {};
+    }
 
     // We have established that the given key has the correct algorithm, and because this is the
     // SoftKeymasterContext we can assume that the Key is an AsymmetricKey. So we can downcast.
     const AsymmetricKey& asymmetric_key = static_cast<const AsymmetricKey&>(key);
 
-    auto attestation_chain = getAttestationChain(key_algorithm, &error);
-    if (error != KM_ERROR_OK) return error;
+    CertificateChain attestation_chain = getAttestationChain(key_algorithm, error);
+    if (*error != KM_ERROR_OK) return {};
 
-    auto attestation_key = getAttestationKey(key_algorithm, &error);
-    if (error != KM_ERROR_OK) return error;
+    auto attestation_key = getAttestationKey(key_algorithm, error);
+    if (*error != KM_ERROR_OK) return {};
 
-    return generate_attestation(asymmetric_key, attest_params,
-            *attestation_chain, *attestation_key, *this, cert_chain);
+    return generate_attestation(asymmetric_key, attest_params, move(attestation_chain),
+                                *attestation_key, *this, error);
 }
 
 static keymaster_error_t TranslateAuthorizationSetError(AuthorizationSet::Error err) {
