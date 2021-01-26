@@ -20,6 +20,7 @@
 #include "AndroidKeyMintOperation.h"
 
 #include <aidl/android/hardware/security/keymint/ErrorCode.h>
+#include <aidl/android/hardware/security/secureclock/ISecureClock.h>
 
 #include <keymaster/android_keymaster.h>
 
@@ -33,6 +34,7 @@ using ::keymaster::FinishOperationRequest;
 using ::keymaster::FinishOperationResponse;
 using ::keymaster::UpdateOperationRequest;
 using ::keymaster::UpdateOperationResponse;
+using secureclock::TimeStampToken;
 using namespace km_utils;
 
 AndroidKeyMintOperation::AndroidKeyMintOperation(
@@ -49,7 +51,7 @@ AndroidKeyMintOperation::~AndroidKeyMintOperation() {
 ScopedAStatus AndroidKeyMintOperation::update(const optional<KeyParameterArray>& params,
                                               const optional<vector<uint8_t>>& input,
                                               const optional<HardwareAuthToken>& /* authToken */,
-                                              const optional<VerificationToken>&
+                                              const optional<TimeStampToken>&
                                               /* verificationToken */,
                                               optional<KeyParameterArray>* updatedParams,
                                               optional<ByteArray>* output, int32_t* inputConsumed) {
@@ -57,7 +59,7 @@ ScopedAStatus AndroidKeyMintOperation::update(const optional<KeyParameterArray>&
         return kmError2ScopedAStatus(KM_ERROR_OUTPUT_PARAMETER_NULL);
     }
 
-    UpdateOperationRequest request;
+    UpdateOperationRequest request(impl_->message_version());
     request.op_handle = opHandle_;
     if (input) {
         request.input.Reinitialize(input->data(), input->size());
@@ -67,7 +69,7 @@ ScopedAStatus AndroidKeyMintOperation::update(const optional<KeyParameterArray>&
         request.additional_params.Reinitialize(KmParamSet(params->params));
     }
 
-    UpdateOperationResponse response;
+    UpdateOperationResponse response(impl_->message_version());
     impl_->UpdateOperation(request, &response);
 
     *inputConsumed = 0;
@@ -91,7 +93,7 @@ ScopedAStatus AndroidKeyMintOperation::finish(const optional<KeyParameterArray>&
                                               const optional<vector<uint8_t>>& input,
                                               const optional<vector<uint8_t>>& signature,
                                               const optional<HardwareAuthToken>& /* authToken */,
-                                              const optional<VerificationToken>&
+                                              const optional<TimeStampToken>&
                                               /* verificationToken */,
                                               optional<KeyParameterArray>* updatedParams,
                                               vector<uint8_t>* output) {
@@ -101,7 +103,7 @@ ScopedAStatus AndroidKeyMintOperation::finish(const optional<KeyParameterArray>&
             static_cast<int32_t>(ErrorCode::OUTPUT_PARAMETER_NULL)));
     }
 
-    FinishOperationRequest request;
+    FinishOperationRequest request(impl_->message_version());
     request.op_handle = opHandle_;
 
     if (input) {
@@ -116,7 +118,7 @@ ScopedAStatus AndroidKeyMintOperation::finish(const optional<KeyParameterArray>&
         request.additional_params.Reinitialize(KmParamSet(params->params));
     }
 
-    FinishOperationResponse response;
+    FinishOperationResponse response(impl_->message_version());
     impl_->FinishOperation(request, &response);
     opHandle_ = 0;
 
@@ -132,10 +134,10 @@ ScopedAStatus AndroidKeyMintOperation::finish(const optional<KeyParameterArray>&
 }
 
 ScopedAStatus AndroidKeyMintOperation::abort() {
-    AbortOperationRequest request;
+    AbortOperationRequest request(impl_->message_version());
     request.op_handle = opHandle_;
 
-    AbortOperationResponse response;
+    AbortOperationResponse response(impl_->message_version());
     impl_->AbortOperation(request, &response);
     opHandle_ = 0;
 
