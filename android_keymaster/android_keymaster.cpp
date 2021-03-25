@@ -373,6 +373,16 @@ void AndroidKeymaster::FinishOperation(const FinishOperationRequest& request,
 
     response->error = operation->Finish(request.additional_params, request.input, request.signature,
                                         &response->output_params, &response->output);
+    if (response->error != KM_ERROR_OK) {
+        operation_table_->Delete(request.op_handle);
+        return;
+    }
+
+    // Invalidate the single use key from secure storage after finish.
+    if (operation->hw_enforced().Contains(TAG_USAGE_COUNT_LIMIT, 1) &&
+        context_->secure_key_storage() != nullptr) {
+        response->error = context_->secure_key_storage()->DeleteKey(operation->key_id());
+    }
     operation_table_->Delete(request.op_handle);
 }
 
@@ -523,6 +533,11 @@ void AndroidKeymaster::ImportWrappedKey(const ImportWrappedKeyRequest& request,
         }
         if (sids & HW_AUTH_FINGERPRINT) {
             key_description.push_back(TAG_USER_SECURE_ID, request.biometric_sid);
+        }
+
+        if (context_->GetKmVersion() >= KmVersion::KEYMINT_1) {
+            key_description.push_back(TAG_CERTIFICATE_NOT_BEFORE, 0);
+            key_description.push_back(TAG_CERTIFICATE_NOT_AFTER, kUndefinedExpirationDateTime);
         }
     }
 
