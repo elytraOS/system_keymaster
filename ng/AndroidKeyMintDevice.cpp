@@ -53,7 +53,7 @@ vector<KeyCharacteristics> convertKeyCharacteristics(SecurityLevel keyMintSecuri
     if (keyMintSecurityLevel != SecurityLevel::SOFTWARE) {
         // We're pretending to be TRUSTED_ENVIRONMENT or STRONGBOX.
         keyMintEnforced.authorizations = kmParamSet2Aidl(hw_enforced);
-        if (include_keystore_enforced) {
+        if (include_keystore_enforced && !sw_enforced.empty()) {
             // Put all the software authorizations in the keystore list.
             KeyCharacteristics keystoreEnforced{SecurityLevel::KEYSTORE,
                                                 kmParamSet2Aidl(sw_enforced)};
@@ -216,7 +216,7 @@ AndroidKeyMintDevice::AndroidKeyMintDevice(SecurityLevel securityLevel)
     : impl_(new ::keymaster::AndroidKeymaster(
           [&]() -> auto {
               auto context = new PureSoftKeymasterContext(
-                  KmVersion::KEYMINT_1, static_cast<keymaster_security_level_t>(securityLevel));
+                  KmVersion::KEYMINT_2, static_cast<keymaster_security_level_t>(securityLevel));
               context->SetSystemVersion(::keymaster::GetOsVersion(),
                                         ::keymaster::GetOsPatchlevel());
               context->SetVendorPatchlevel(::keymaster::GetVendorPatchlevel());
@@ -233,7 +233,7 @@ AndroidKeyMintDevice::AndroidKeyMintDevice(SecurityLevel securityLevel)
 AndroidKeyMintDevice::~AndroidKeyMintDevice() {}
 
 ScopedAStatus AndroidKeyMintDevice::getHardwareInfo(KeyMintHardwareInfo* info) {
-    info->versionNumber = 1;
+    info->versionNumber = 2;
     info->securityLevel = securityLevel_;
     info->keyMintName = "FakeKeyMintDevice";
     info->keyMintAuthorName = "Google";
